@@ -9,7 +9,6 @@ primary_region = 'otp'
 [build]
 
 [http_service]
-  fly ips allocate-v4
   internal_port = 9999
   force_https = true
   auto_stop_machines = 'stop'
@@ -22,3 +21,16 @@ primary_region = 'otp'
   cpu_kind = 'shared'
   cpus = 1
   memory_mb = 2048
+
+[[services]]
+  internal_port = 50051
+  protocol = "tcp"
+
+  [services.concurrency]
+    hard_limit = 25
+    soft_limit = 20
+
+  [[services.ports]]
+    handlers = ["tls", "http"]
+    tls_options = {"alpn" = ["h2"]}
+    port = "443"
