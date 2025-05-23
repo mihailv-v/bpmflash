@@ -23,9 +23,9 @@ const port = process.env.PORT || 9999;
 // Check if the code is running in a Repl.it environment
 
 
-// Define the base URL for Netlify deployment
-const netlifyBaseUrl = 'https://firefly-musical-alien.ngrok-free.app';
-const originURL = `${netlifyBaseUrl}`
+// Define the base URL for deployment
+const originBaseUrl = 'https://bpmflash.onrender.com';
+const originURL = `${originBaseUrl}`
 
 // Define the base URL for Repl.it deployment
 const replitBaseUrl = 'https://bpm-flash-4-spotify-mv47.replit.app';
@@ -45,14 +45,14 @@ let lastLoggedIn;
 let corsOptions;
 if (isReplit) {
     corsOptions = {
-        origin: netlifyBaseUrl,
+        origin: originBaseUrl,
         methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
         credentials: true,
         optionsSuccessStatus: 204,
     };
 } else {
     corsOptions = {
-        origin: netlifyBaseUrl,
+        origin: originBaseUrl,
         methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
         credentials: true,
         optionsSuccessStatus: 204,
