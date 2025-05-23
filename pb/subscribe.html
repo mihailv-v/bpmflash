@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="styles.css">
+    <title>Secondary Page</title>
+    <style>
+        body {
+            transition: background-color 0s ease; /* Adjust the transition duration as needed */
+        }
+
+        /* Center the form on the page */
+        form {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+
+            /* Center the form on the page */
+        }
+    </style>
+</head>
+
+<body id="1b" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen>
+
+  <div class="overlay-container" id="overlay-container" style="display: none;">
+            <div class="overlay" id="playerData" style="
+    opacity: 0.74;
+">
+            <div id="song-info">
+                <!-- Display "Now Playing" indicator -->
+                <p id="now-playing" style="display: none;">• Now Playing</p>
+                <!-- Display the song title -->
+                <p id="song-details" style="display: none;">Song: <span id="song-title"></span></p>
+                <!-- Display the BPM -->
+                <p style="display: none;">BPM: <span id="bpm">0</span></p>
+            </div>
+            </div>
+  </div>
+    <!-- Form to input the code -->
+    <div style="
+    margin: auto;
+    display: flex;
+    flex-direction: column;
+    flex-wrap: wrap;
+    align-content: center;
+    justify-content: center;
+    align-items: center;
+    opacity: 0.74;
+">
+        <form class="hide-ui" id="codeForm" style="
+    opacity: 0.74;
+">
+            <label class="hide-ui "for="codeInput">Enter the code:</label>
+            <input class="hide-ui" type="text" id="codeInput" value="" required style="
+    opacity: 0.80;
+">
+            <button class="hide-ui" id="hide-ui" type="submit" onclick="submitCode()">Submit</button>
+    
+        </form>
+        <div id="mobile_content_holder" style="opacity:0.5;border-radius:50px;z-index: -999;"frameborder="50%"  allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen>
+
+          <iframe id="mobile_content_frame" width="10vh" height="10vh" style="opacity:0.05; border-radius:50px; z-index: -999;" frameborder="100%" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+
+      </div>
+
+          
+
+
+      <div style="bottom:30px;margin-top:10px;position: relative;">
+            <div class="for-space" style="justify-items:center;display: flex;flex-direction: column;flex-wrap: wrap;align-content: center;justify-content: center;align-items: stretch;opacity:0.58;">
+        <button class="hide-ui" id="toggleButton" style="border-bottom: thick inset rgba(50, 205, 50, 0.33);border-top: double rgba(0, 255, 0, 0.33);background-color: rgba(64,64,64,0);" onclick="toggleFormVisibility()">Toggle code input</button>
+      <div style="
+            justify-items: center;
+            display: inline-flex;
+            align-items: stretch;
+            /* align-self: center; */
+        ">
+        <button class="hide-ui" id="fullscreenButton" style="border-bottom: thick inset rgba(50, 205, 50, 0.33);border-top: double rgba(0, 255, 0, 0.33);background-color: rgba(64,64,64,0);" >Fullscreen for PIP</button>
+        <button class="hide-ui" id="fullscreenButtonNormal" style="border-bottom: thick inset rgba(50, 205, 50, 0.33);border-top: double rgba(0, 255, 0, 0.33);background-color: rgba(64,64,64,0);" >Fullscreen</button>
+
+      </div>
+          
+              
+        <button class="hide-ui" id="lazyReloadButton" style="border-bottom: thick inset rgba(50, 205, 50, 0.33);border-top: double rgba(0, 255, 0, 0.33);background-color: rgba(64,64,64,0);">Reload</button>
+          
+      <button class="hide-ui" id="emergencyButton" style="border-bottom: thick inset rgba(50, 205, 50, 0.33);border-top: double rgba(0, 255, 0, 0.33);background-color: rgba(64,64,64,0);" >Stop Hidden Video (PIP)</button>
+      </div>
+
+      </div>
+    </div>
+
+
+  <script>
+
+    // Function to toggle the visibility of form elements
+    let currentDisplay;
+    function toggleFormVisibility() {
+        const formElements = document.querySelectorAll('.hide-ui:not(#toggleButton):not(#song-link):not(#fullscreenButton):not(#fullscreenButtonNormal):not(#emergencyButton):not(#lazyReloadButton)');
+        const overlayContainer = document.getElementById('song-info');
+        const toggleButton = document.getElementById('toggleButton');
+
+        formElements.forEach(element => {
+            currentDisplay = element.style.display;
+            element.style.display = currentDisplay !== 'none' ? 'none' : 'flex';
+        });
+
+        if (currentDisplay !== 'none') {
+            // If elements are currently visible, move the overlay to the center
+            overlayContainer.style.alignItems = 'center';
+            overlayContainer.style.justifyContent = 'center';
+            toggleButton.textContent = 'Show code input';
+        } else {
+            // If elements are currently hidden, move the overlay to the top
+            overlayContainer.style.alignItems = 'flex-start';
+            overlayContainer.style.justifyContent = 'flex-start';
+            toggleButton.textContent = 'Hide code input';
+        }
+    }
+
+
+    
+      function updateBackgroundColor(color, transition) {
+    console.log('Received color:', color);
+    console.log('Received transition:', transition);
+    document.body.style.backgroundColor = color;
+        if(`background-color ${transition}s ease`!= document.body.style.transition){
+    document.body.style.transition = `background-color ${transition}s ease` || 'background-color 0s ease';
+        }
+}
+
+      // Declare eventSource variable outside of the function for global access
+      let eventSource;
+
+      // Function to initiate SSE connection with a valid code
+      function initiateSSE(code) {
+          // Close existing SSE connection if any
+          if (eventSource) {
+              eventSource.close();
+          }
+
+          // Server-Sent Events (SSE) to receive color updates
+          eventSource = new EventSource(`/subscribe?code=${encodeURIComponent(code)}`);
+
+          eventSource.onmessage = (event) => {
+              const data = JSON.parse(event.data);
+              const { color,transition } = data;
+              updateBackgroundColor(color,transition);
+          };
+      }
+
+      // Function to submit the entered code
+      function submitCode(eventSource) {
+          event.preventDefault();  // Prevent the default form submission behavior
+
+          const codeInput = document.getElementById('codeInput').value;
+          subCode = codeInput;
+      window.history.replaceState({}, document.title, `/subscribe.html?code=${subCode?subCode:''}`);
+      document.getElementById('codeInput').value = `${subCode?subCode:''}`;
+          // Check if the code is valid before initiating SSE connection
+          if (codeInput) {
+              initiateSSE(codeInput);
+          }
+      }
+
+    let subCode;
+    // Function to initiate SSE connection with a valid code
+    function initiateSSEFromURL() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const code = urlParams.get('code');
+        subCode=code;
+
+        // Check if there's a code in the URL parameters
+        if (code) {
+            // Close existing SSE connection if any
+            if (eventSource) {
+                eventSource.close();
+            }
+
+            // Server-Sent Events (SSE) to receive color updates
+            eventSource = new EventSource(`/subscribe?code=${encodeURIComponent(code)}`);
+
+            eventSource.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                const { color, transition } = data;
+                updateBackgroundColor(color, transition);
+            };
+        }
+      // Clear the URL to remove sensitive information
+      
+      window.history.replaceState({}, document.title, `/subscribe.html?code=${subCode?subCode:''}`);
+      document.getElementById('codeInput').value = `${subCode?subCode:''}`;
+    }
+
+    // Call the function when the page loads
+    initiateSSEFromURL();
+
+
+    // Function to fetch and display overlay data at intervals
+    function fetchAndDisplayOverlayData(code) {
+        setInterval(() => {
+          code=subCode;
+          if(subCode){
+            fetch(`/getoverlaydata?code=${encodeURIComponent(code)}`)
+                .then(response => response.json())
+                .then(data => {
+                    const { overlayHTML } = data;
+                  if(overlayHTML){
+                    updateOverlay(overlayHTML);
+                  }
+                })
+                .catch(error => console.error('Error fetching overlay data:', error));
+        }
+        }, 7000); // Interval set to 5 seconds (5000 milliseconds)
+    }
+
+    fetchAndDisplayOverlayData(subCode);
+
+
+    async function updateOverlay(overlayHTML) {
+        // Assuming you have an element with class "overlay-container" to contain the overlay
+        const overlayContainer = document.getElementById('song-info');
+        const container = document.getElementById('overlay-container');
+    
+        // Set the innerHTML of the overlay container with the received overlay data
+      
+        overlayContainer.innerHTML = subCode?(!overlayHTML.toString().startsWith("[")?overlayHTML:overlayContainer.innerHTML):'';
+        container.style.display = subCode?'flex':'none';
+      
+    }
+
+  </script>
+
+
+   <script>
+
+     const video = document.getElementById('1b');
+         const iframe = document.getElementById('mobile_content_frame');
+         const iframeDocument = iframe.contentDocument;
+
+         // Set the inner HTML of the iframe
+         iframeDocument.body.innerHTML =
+           `<style>
+
+         video::-webkit-media-controls-timeline,
+         video::-webkit-media-controls-volume-slider,
+         video::-webkit-media-controls-mute-button,
+         video::-webkit-media-controls-toggle-closed-captions-button,
+         video::-webkit-media-controls-overflow-button,
+         video::-webkit-media-controls-current-time-display,
+         video::-webkit-media-controls-time-remaining-display {
+           filter: grayscale(100%);
+           opacity: 0.05;
+           pointer-events: none;
+         }
+
+
+         /* Show fullscreen button */
+         video::-webkit-media-controls-fullscreen-button {
+           filter: grayscale(0%);
+           opacity: 1;
+           pointer-events: auto;
+         }
+         video::-webkit-media-controls-play-button {
+           filter: grayscale(100%);
+           opacity: 0.05;
+           pointer-events: none;
+           display: none;
+         }
+           </style>
+           <video id="mobile_content" width="100%" height="100%" src="lbt.webm" style="border-radius:50px;" autoplay muted controls loop></video>`;
+         const mobileContent = iframeDocument.getElementById('mobile_content');
+
+         const mobileContentHolder = document.getElementById('mobile_content_holder');
+         const fullscreenButton = document.getElementById('fullscreenButton');
+
+     fullscreenButton.addEventListener("click", function () {
+       console.log('Stored fullscreen state:', storedFullscreenState?storedFullscreenState:false);
+       if (document.fullscreenElement) {
+         document.exitFullscreen();
+         localStorage.setItem('fullscreenState', false);
+       } else {
+         makeFullscreen(mobileContent);
+       }
+     });
+         document.getElementById('fullscreenButtonNormal').addEventListener("click", function () {
+           console.log('Stored fullscreen state:', storedFullscreenState?storedFullscreenState:false);
+           if (document.fullscreenElement) {
+             document.exitFullscreen();
+             localStorage.setItem('fullscreenState', false);
+           } else {
+             makeFullscreen(video);
+           }
+           console.log('Stored fullscreen state:', storedFullscreenState?storedFullscreenState:false);
+         });
+
+     function makeFullscreen(element) {
+       if (element.requestFullscreen) {    
+         element.requestFullscreen();
+         localStorage.setItem('fullscreenState', true);
+       } else if (element.webkitRequestFullscreen) {
+         element.webkitRequestFullscreen();
+         localStorage.setItem('fullscreenState', true);
+       } else if (element.mozRequestFullScreen) {
+         element.mozRequestFullScreen();
+         localStorage.setItem('fullscreenState', true);
+       } else if (element.msRequestFullscreen) {
+         element.msRequestFullscreen();
+         localStorage.setItem('fullscreenState', true);
+       } else {
+         var requestFullscreen =
+           document.documentElement.requestFullscreen ||
+           document.documentElement.webkitRequestFullscreen ||
+           document.documentElement.mozRequestFullscreen ||
+           document.documentElement.requestFullScreen ||
+           document.documentElement.webkitRequestFullScreen ||
+           document.documentElement.mozRequestFullScreen;
+
+         if (requestFullscreen) {
+           requestFullscreen.call(document.documentElement);
+           localStorage.setItem('fullscreenState', true);
+         } else {
+           localStorage.setItem('fullscreenState', false);
+           console.log("Fullscreen not supported");
+         }
+       }
+     }
+
+  const emergencyButton = document.getElementById('emergencyButton');
+
+  // Function to update the button text based on the video state
+  function updateButtonText() {
+    if (mobileContent.paused) {
+      emergencyButton.textContent = 'Start Hidden Video (PIP)';
+    } else {
+      emergencyButton.textContent = 'Stop Hidden Video (PIP)';
+    }
+  }
+
+  // Add event listener to the emergency button
+  emergencyButton.addEventListener('click', function () {
+    if (mobileContent.paused) {
+      // If the video is paused, play it
+      mobileContent.play();
+    } else {
+      // If the video is playing, pause it
+      mobileContent.pause();
+    }
+
+    // Update the button text after the click event
+    updateButtonText();
+  });
+
+  // Update the button text when the video state changes
+  mobileContent.addEventListener('play', updateButtonText);
+  mobileContent.addEventListener('pause', updateButtonText);
+
+
+
+
+         const reloadButton = document.getElementById('lazyReloadButton');
+     reloadButton.addEventListener('click', () => {
+
+
+          localStorage.setItem('fullscreenState', !!document.fullscreenElement);
+  console.log('Stored fullscreen state:', !!document.fullscreenElement);
+
+       // Reload the page after a delay (e.g., 1 second)
+       setTimeout(() => {
+         location.reload();
+       }, 1000);
+     });
+
+     // Check the stored fullscreen state after the page reloads
+     const storedFullscreenState = localStorage.getItem('fullscreenState') === 'true';
+     console.log('Stored fullscreen state:', storedFullscreenState?storedFullscreenState:false);
+
+     if (storedFullscreenState) {
+       console.log("the stored state check to activate fullscreen" , storedFullscreenState);
+        setTimeout(() => {
+          makeFullscreen(video);
+        }, 1562);
+
+     }
+
+
+   </script>
+
+  
+</body>
+
+</html>

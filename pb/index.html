@@ -1,0 +1,786 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <!-- <meta name="viewport" content="width=device-width, initial-scale=1.0"> -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0">
+  
+    <title>BPM Flash Overlay</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <script src="https://cdn.socket.io/4.1.2/socket.io.min.js"></script>
+</head>
+<body id="1b">
+    <!-- Floating BPM Balloon -->
+    <div id="bpm-balloon" class="bpm-balloon">
+        <span class="balloon-text">BPM: <span id="balloon-bpm">0</span></span>
+    </div>
+    <!-- Overlay Container -->
+    <div class="overlay-container" style="
+          opacity: 0.74;
+      ">
+        <!-- Content to display BPM and song information -->
+        <select class="bpm-mode-selector">
+      <option value="manual">Manual BPM</option>
+      <option value="microphone">Microphone</option>
+      <option value="youtube">YouTube</option>
+      <option value="tunebat">Google Search</option>
+    </select>
+    <div class="bpm-mode-container">
+      <div class="manual-input mode-section" style="display: block;">
+        <button id="tap-tempo" class="bpm-button">Tap Tempo</button>
+        <button id="clear-taps" class="bpm-button">Clear Taps</button>
+        <div class="tap-info" style="justify-items: center;display: inline-flex;flex-direction: row;flex-wrap: nowrap;align-content: center;align-items: stretch;justify-content: space-evenly;">Tap at least 4 times to get a BPM</div>
+      </div>
+      
+      <div class="microphone-input mode-section" style="display: none;">
+        <div class="waveform-container">
+          <canvas id="waveformCanvas"></canvas>
+        </div>
+        <div class="mic-controls">
+          <button id="start-mic" class="bpm-button">Start Microphone</button>
+          <button id="stop-mic" class="bpm-button" disabled>Stop</button>
+        </div>
+                  <div class="mic-settings">
+          <h4 style="margin: 0 0 10px 0; color: rgba(255, 239, 213, 0.9); text-align: center;">Settings</h4>
+          <div class="threshold-control">
+            <label for="threshold-slider">Threshold: <span id="threshold-value">0.3</span></label>
+            <input type="range" id="threshold-slider" min="0.1" max="0.9" step="0.05" value="0.3" class="slider">
+          </div>
+          <div class="mic-volume-control">
+            <label for="volume-gain-slider">Volume Gain: <span id="volume-gain-value">1.0</span></label>
+            <input type="range" id="volume-gain-slider" min="0.1" max="5.0" step="0.1" value="1.0" class="slider">
+          </div>
+          <div class="beat-flash-control">
+            <label class="toggle-label">
+              <span class="toggle-text">Flash on Beat</span>
+              <input type="checkbox" id="beat-flash-toggle">
+            </label>
+          </div>
+          <div class="bpm-update-control">
+            <label class="toggle-label">
+              <span class="toggle-text">Stable BPM Updates (5s)</span>
+              <input type="checkbox" id="stable-bpm-toggle" checked>
+            </label>
+          </div>
+        </div>
+        <div class="mic-status">Click Start to begin analysis</div>
+      </div>
+      
+      <div class="youtube-input mode-section" style="display: none;">
+        <input type="text" placeholder="Enter YouTube URL" class="bpm-input">
+        <button class="bpm-button analyze-btn">Analyze</button>
+        <div class="youtube-info"></div>
+        <div class="progress-bar" style="display: none;"></div>
+      </div>
+      
+      <div class="tunebat-input mode-section" style="display: none;">
+        <input type="text" placeholder="Song Title" class="bpm-input">
+        <input type="text" placeholder="Artist" class="bpm-input">
+        <div style="display: flex; justify-content: center; gap: 10px;">
+          <button class="bpm-button analyze-btn">Search</button>
+          <button class="bpm-button current-song-btn">Use Current Song</button>
+        </div>
+        <div class="tunebat-info"></div>
+        <div class="progress-bar" style="display: none;"></div>
+      </div>
+    </div>
+        <div class="overlay" id="playerData">
+            <div id="song-info">
+                <!-- Display "Now Playing" indicator -->
+                <p id="now-playing" style="display: none;">• Now Playing</p>
+                <!-- Display the song title -->
+                <p id="song-details" style="display: none;">Song: <span id="song-title"></span></p>
+                <!-- Display the BPM -->
+                <p>BPM: <span id="bpm">0</span></p>
+                <!-- Container for BPM option buttons -->
+                <p id="bpm-buttons-container" style="margin-top: 10px;display: inline-grid;background-color: rgba(0, 0, 0, 0.2);padding: 8px;border-radius: 8px;overflow-wrap: break-word;max-width: 54%;justify-items: stretch;grid-template-columns: repeat(3, 1fr);"><br></p>
+            </div>
+            <!-- Playback Controls (updated) -->
+          <div class="play-controls" style="
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                flex-wrap: wrap;
+            ">
+            <div class="playback-controls" id="playback-controls" style="display: inline-flex;flex-direction: column;flex-wrap: wrap;margin:10px 0;opacity:0.67">
+              <div style="
+                    justify-items: center;
+                    display: inline-flex;
+                    align-items: stretch;
+                ">
+                <button id="prev-song-button">
+                    <i class="fas fa-step-backward"></i>
+                </button>
+                <button id="play-pause-button">
+                    <i class="fas fa-play"></i>
+                </button>
+                <button id="next-song-button">
+                    <i class="fas fa-step-forward"></i>
+                </button>
+              </div>
+              <div style="
+                    justify-items: center;
+                    display: inline-flex;
+                    align-items: stretch;
+                ">
+                <button class="shuffle-toggle-button" id="shuffle-toggle-button" >
+                  <i id="shuffle-icon" class="fas fa-random" style="display:none;"></i>
+                  <i id="unshuffle-icon" class="fas fa-long-arrow-alt-right" style="display:none;"></i>
+                </button>
+              </div>
+            </div>
+            <div class="playback-controls" style="display: inline-flex;flex-direction: column;flex-wrap: nowrap;align-content: space-between;align-items: center;justify-content: center;opacity:0.67">
+              <div id="volume-slider" style="">
+                <div style="">
+                <i class="fas fa-volume-up"></i>
+               <input type="range" min="0" max="100" value="10" step="1" class="slider" id="volumeRange">
+                </div>
+              </div>
+                        <!-- Song Progress Slider -->
+              <div id="progress-slider" style="">
+                <div style="">
+                <i class="fas fa-minus"></i>
+                <i class="fas fa-play"></i>
+                <i class="fas fa-minus"></i>
+                </div>
+                  <input type="range" min="0" max="100" value="0" step="0.05" class="slider" id="progressRange">
+              </div>
+          </div>
+          </div>
+
+          
+        </div>
+    </div>
+
+  
+  <div style="opacity:0.67;">
+
+
+    <div style="
+    display: flex;
+    flex-direction: column;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    align-items: center;
+    align-content: space-around;
+">
+      <button  id="manual-check-add" style="
+    background-color: rgba(64, 64, 64, 0.66);
+    color: rgba(255, 239, 213, 0.70);
+    border: none;
+    border-radius: 15px;
+    padding: 5px 10px;
+    box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2);
+    margin: 2px;">
+          Add in BPM Playlist
+      </button>
+      <div>
+      </div>
+
+      <div style="
+            display: flex;
+            flex-wrap: wrap;
+            flex-direction: row;
+            align-content: center;
+            justify-content: center;
+            align-items: center;
+        ">
+        
+      <span class="toggle-label2, hide-ui" id="autoSaveSpanText" style="opacity: 0.95;color: rgba(255, 239, 213, 0.75);">Auto save in<br>BPM Playlist</span>
+      <div style="
+            text-align: center;
+            display: inline-flex;
+            height: 45px;
+            align-content: stretch;
+            justify-content: space-evenly;
+            justify-items: center;
+            align-items: center;
+            flex-direction: column;
+            flex-wrap: wrap;
+            opacity: 0.77;
+         ">
+
+            <div class="toggle-container" id="toggle-container2">
+
+              <div>
+                <input type="checkbox" id="extract-toggle2" class="extract-toggle-checkbox2">
+                <label for="extract-toggle2" class="extract-toggle-label2"></label>
+                <div class="extract-toggle-slider2"><br></div>
+
+
+              </div>
+
+            </div>
+
+
+      </div>
+    </div>
+    </div>
+
+
+    
+  </div>
+
+  </div>
+  <!-- Button to Show/Hide UI -->
+    <div class="for-space" style="justify-items:center;display: flex;flex-direction: column;flex-wrap: wrap;align-content: center;justify-content: center;align-items: stretch;opacity:0.58;">
+        <button class="hide-ui" id="hide-ui">Toggle Options</button>
+      
+      <div class="hide-ui" id="zoom-controls" style="justify-items:center;display: flex;flex-direction: column;flex-wrap: wrap;align-content: center;justify-content: center;align-items: stretch;">
+    <label style="justify-items:center;display: flex;flex-direction: column;flex-wrap: wrap;align-content: center;justify-content: center;align-items: stretch;" for="zoomSlider">Zoom:</label>
+    <input type="range" min="30" max="120" value="100" step="5" class="slider" style="max-width:15vh;"id="zoomSlider">
+        <script>
+          document.getElementById('zoomSlider').addEventListener('input', function () {
+    const zoomValue = this.value;
+    document.body.style.transform = `scale(${zoomValue / 100})`;
+});
+          
+
+        </script>
+      </div>
+      
+      <div class="hide-ui" style="justify-items:center;display: flex;flex-direction: column;flex-wrap: wrap;align-content: center;justify-content: center;align-items: stretch;">
+        <button class="hide-ui" id="subscribe">Mirror Colors </button>
+        <span id="code-display" style="
+              align-self: center;
+          "></span>
+        <button class="hide-ui" id="goToMirror">Go To Mirror Page</button>
+      </div>
+
+<button class="hide-ui" id="lazyReloadButton" style="margin: 37px 0;padding: 22px 0;">Reload</button>
+
+      <div style="
+            justify-items: center;
+            display: inline-flex;
+            align-items: stretch;
+            /* align-self: center; */
+        ">
+        <button class="hide-ui" id="fullscreenButton" style="border-bottom: thick inset rgba(50, 205, 50, 0.33);border-top: double rgba(0, 255, 0, 0.33);background-color: rgba(64,64,64,0);" >Fullscreen for PIP</button>
+        <button class="hide-ui" id="fullscreenButtonNormal" style="border-bottom: thick inset rgba(50, 205, 50, 0.33);border-top: double rgba(0, 255, 0, 0.33);background-color: rgba(64,64,64,0);" >Fullscreen</button>
+        
+      </div>
+      <button class="hide-ui" id="emergencyButton" style="border-bottom: thick inset rgba(50, 205, 50, 0.33);border-top: double rgba(0, 255, 0, 0.33);background-color: rgba(64,64,64,0);" >Stop Hidden Video (PIP)</button>
+
+      <button class="hide-ui" id="playlist-button" onclick="redirectToPlaylistPage()">Playlist Tools</button>
+    </div>
+    <!-- Controls Container -->
+    <div class="controls-container">
+        <div class="controls">
+            
+            <!-- Login with Spotify Button -->
+            <label for="login-button" id="login-message"></label>
+            <button id="login-button">Login with Spotify</button>
+            <button id="logout-button">Logout</button>
+            <!-- Custom Colors Input Field -->
+            <div>
+                <label for="custom-colors">Custom Colors (comma-separated)</label>
+                <input type="text" id="custom-colors" placeholder="red,green,blue,#7F00FF">
+                <div class="color-controls">
+
+                    <div>
+                        <!-- Set Colors Button -->
+                        <button id="set-colors-button">Set Colors</button>
+                        <!-- Default Colors Button -->
+                        <button id="default-colors-button">Default Colors</button>
+                      <!-- Random Colors Button -->
+                      <button id="random-colors-button">Random Colors</button>
+                    </div>
+
+
+                </div>
+
+
+            </div>              
+                <!-- Toggle switch container with label -->
+          <div class="special-color-toggles" style="display: flex;flex-direction: column;flex-wrap: wrap;align-content: center;justify-content: space-evenly;align-items: center;">
+          <div>
+            <span class="toggle-label">Randomize colors</span>
+            <div style="
+                  text-align: center;
+                  display: inline-flex;
+                  height: 45px;
+                  align-content: stretch;
+                  justify-content: space-evenly;
+                  justify-items: center;
+                  align-items: center;
+                  flex-direction: column;
+                  flex-wrap: wrap;
+               ">
+
+                  <div class="toggle-container" id="toggle-container1">
+                                  
+                    <div>
+                      <input type="checkbox" id="extract-toggle1" class="extract-toggle-checkbox1">
+                      <label for="extract-toggle1" class="extract-toggle-label1"></label>
+                      <div class="extract-toggle-slider1"><br></div>
+
+                      
+                    </div>
+                      
+                  </div>
+    
+
+            </div>
+          </div>
+          
+
+          <div>
+            <span class="toggle-label">Use cover art colors</span>
+            <div style="
+                  text-align: center;
+                  display: inline-flex;
+                  height: 45px;
+                  align-content: stretch;
+                  justify-content: space-evenly;
+                  justify-items: center;
+                  align-items: center;
+                  flex-direction: column;
+                  flex-wrap: wrap;
+               ">
+
+              <div class="toggle-container" id="toggle-container">
+
+                <div> 
+                  <input type="checkbox" id="extract-toggle" class="extract-toggle-checkbox">
+                  <label for="extract-toggle" class="extract-toggle-label"></label>
+                  <div class="extract-toggle-slider"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div>
+            <span class="toggle-label">Auto-fetch BPM from Google</span>
+            <div style="
+                  text-align: center;
+                  display: inline-flex;
+                  height: 45px;
+                  align-content: stretch;
+                  justify-content: space-evenly;
+                  justify-items: center;
+                  align-items: center;
+                  flex-direction: column;
+                  flex-wrap: wrap;
+               ">
+
+              <div class="toggle-container" id="tunebat-toggle-container">
+
+                <div> 
+                  <input type="checkbox" id="tunebat-auto-toggle" class="extract-toggle-checkbox">
+                  <label for="tunebat-auto-toggle" class="extract-toggle-label"></label>
+                  <div class="extract-toggle-slider"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+            </div>
+
+
+          
+          <div id="color-controls" style="max-width: 33vh;display: inline-flex;flex-direction: column;flex-wrap: wrap;align-content: center;justify-content: space-around;align-items: center;margin-top: 21px;">
+              <label for="color-saturation">Change Saturation</label>
+              <input style="max-width: 42vh;" type="range" min="-50" max="50" value="0" class="slider" id="color-saturation">
+              <span id="saturation-text">0</span>
+
+              <label for="color-vibrance">Change Vibrance</label>
+              <input style="max-width: 42vh;" type="range" min="-50" max="50" value="0" class="slider" id="color-vibrance">
+              <span id="vibrance-text">0</span>
+
+              <label for="color-brightness">Change Brightness</label>
+              <input style="max-width: 42vh;" type="range" min="-50" max="50" value="0" class="slider" id="color-brightness">
+              <span id="brightness-text">0</span>
+
+              <button id="submit-btn">Submit Changes To Colors</button>
+          </div>
+
+
+            <!-- Custom BPM Input Field -->
+            <div class="cust-bpm-container" style="
+                  margin-top: 20px;
+              ">
+                <input type="number" id="custom-bpm-input" placeholder="Enter custom BPM">
+                <!-- Set Custom BPM Button -->
+                <button id="set-custom-bpm">Set BPM</button>
+            </div>
+          <!-- Manual BPM Input Field and Buttons -->
+            <div class="manual-bpm-container" style="
+                            display: inline-flex;
+                            flex-direction: column;
+                            flex-wrap: wrap;
+                            align-content: center;
+                            justify-content: space-around;
+                            align-items: center;
+                        ">
+                          <input type="text" id="manual-bpm-input" placeholder="Use keyboard taps to set BPM" value="Use keyboard taps to set BPM" style="width: 25vh;">
+                          <button id="manual-bpm-button" style="
+                height: 60px;
+                margin: 10px 0;
+            ">Tap in the tempo of the music</button>
+                          <button id="clear-taps-button" style="
+                width: min-content;
+            ">Clear Taps</button>
+                      </div>
+
+            <!-- Custom Track URL Input Field -->
+            <div class="cust-url-container">
+                <input type="text" id="custom-track-url" placeholder="Custom Track URL">
+                <!-- Get BPM Button -->
+                <button id="get-bpm-button">Get BPM</button>
+            </div>
+            <!-- Switch to Currently Playing Button -->
+            <button id="switch-to-currently-playing-button">Switch to Currently Playing</button>
+        </div>
+
+
+        <!-- Tempo Controls -->
+        <div class="tempo-controls">
+            <!-- Stop/Start Button -->
+            <button id="stop-button">Stop</button>
+            <!-- Tempo Half Button -->
+            <button id="half-button">0.5x</button>
+            <!-- Tempo Double Button -->
+            <button id="double-button">2x</button>
+            <!-- Tempo Quadruple Button -->
+            <button id="quadruple-button">4x</button>
+            <!-- Tempo Reset Button -->
+            <button id="reset-button">1x</button>
+        </div>
+        
+        <!-- Additional Tempo Controls -->
+        <div class="tempo-controls">
+            <!-- One-Third Button -->
+            <button id="one-third-button">1/3x</button>
+            <!-- Two-Thirds Button -->
+            <button id="two-thirds-button">2/3x</button>
+            <!-- Three-Quarters Button -->
+            <button id="three-quarters-button">3/4x</button>
+            <!-- Two-and-Half Button -->
+            <button id="two-half-button">2.5x</button>
+            <!-- Triple Button -->
+            <button id="triple-button">3x</button>
+        </div>
+        
+        <!-- Save Base BPM Button -->
+        <button id="save-base-bpm" class="button-darker">Save Current BPM as Base</button>
+
+        <div class="skip-mode-container" id="skip-mode-container">
+        <!-- Skip Mode Dropdown -->
+          <div style="display: inline-flex;justify-content: center; align-items: center;">
+        <select id="skip-mode-dropdown">
+            <option value="below">Below BPM</option>
+            <option value="above">Above BPM</option>
+            <option value="outside">Outside BPM Range</option>
+        </select>
+        
+        <!-- BPM Threshold Input -->
+        <input type="number" id="bpm-threshold" placeholder="Enter BPM" style="display: inline-flex;justify-content: center; align-items: center;">
+    <div style="display: inline-table;">
+        <!-- Low Range Input (for outside mode) -->
+        <input type="number" id="low-range" placeholder="Lowest BPM" style="display: none;justify-content: center; align-items: center;">
+    
+        <!-- High Range Input (for outside mode) -->
+        <input type="number" id="high-range" placeholder="Highest BPM" style="display: none;justify-content: center; align-items: center;">
+    </div>
+        </div>
+        <!-- Skip Button (Toggle) -->
+          <div style="display: flex; justify-content: center; align-items: center;">
+        <button id="skip-button" class="skip-button-active">Start Skipping</button>
+          </div>
+        </div>
+
+
+
+      
+        <div>
+          <label for="transition-slider" id="slider-label">Transition Duration: 0.153s</label>
+          <input type="range" id="transition-slider" min="0" max="1" step="0.05" value="0.153">
+        </div>
+
+      
+        <div id="skip-mix-container">
+            <button id="skip-mix-button">Start Skip Mix</button>
+          <span>Defaults:</span>
+          <p>Set start (seek): 1/3 of song<br>Set end (skip): 2/3 of song</p>
+            <p id="skip-mix-message"></p>
+          <div style="padding: inherit;display: inline-grid;margin: 10px;justify-content: space-between;">
+            <label style="
+                  display: inline-flex;
+                  flex-direction: column;
+                  flex-wrap: wrap;
+                  justify-content: center;
+                  align-content: center;
+                  align-items: center;
+                  position: relative;
+              " for="random-seek-position">Random Seek Position</label>
+            <input style="display: inline-flex;margin:0;flex-direction: column;align-content: center;justify-content: center;position: relative;" type="checkbox" id="random-seek-position">
+            <label style="
+                  display: inline-flex;
+                  flex-direction: column;
+                  flex-wrap: wrap;
+                  justify-content: center;
+                  align-content: center;
+                  align-items: center;
+                  position: relative;
+              "for="random-skip-position">Random Skip Position</label>
+            <input style="display: inline-flex;margin:0;flex-direction: column;align-content: center;justify-content: center;position: relative;" type="checkbox" id="random-skip-position">
+          </div>
+          <br>
+        </div>
+
+
+            <div id="mobile_content_holder" style="opacity:0.5;border-radius:50px;z-index: -999;"frameborder="50%"  allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen>
+
+          <iframe id="mobile_content_frame" width="10vh" height="10vh" style="opacity:0.05; border-radius:50px; z-index: -999;" frameborder="100%" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+
+      </div>
+        <div id="context-current-playlist" style="border: none;
+          border-radius: 10px;
+          background-color: rgba(1, 1, 1, 0.2);
+          display: flex;
+          flex-direction: column;
+          flex-wrap: wrap;
+          justify-content: center;
+          align-items: stretch;">
+          
+        </div>
+    </div>
+
+
+    <!-- Script -->
+    <script>
+      async function engageWakeLock(){
+      if ('wakeLock' in navigator) {
+          try {
+              const wakeLock = await navigator.wakeLock.request('screen');
+
+              // The screen will stay awake as long as the wake lock is active
+              console.log('Wake Lock engaged');
+          } catch (error) {
+              console.error('Unable to request wake lock: ', error);
+          }
+      } 
+        try {
+        if ('preventSleep' in navigator) {
+          // The browser supports preventing sleep
+          navigator.preventSleep('display');
+          console.log('Prevent Sleep engaged');
+      } else {
+          console.log('Prevent Sleep  NOT engaged ');
+      }
+        }catch (error) {
+            console.error('Unable to request preventSleep: ', error);
+        } 
+        
+        if ('getWakeLock' in navigator) {
+          let wakeLockObj = null;
+          console.log(`getWakeLock`)
+          navigator.getWakeLock('screen').then((wlObj) => {
+            wakeLockObj = wlObj;
+            let wakeLockRequest = null;
+            const toggleWakeLock = () => {
+              if (wakeLockRequest) {
+                wakeLockRequest.cancel();
+                wakeLockRequest = null;
+                return;
+              }
+              wakeLockRequest = wakeLockObj.createRequest();
+            };
+
+            try{
+              toggleWakeLock();
+              console.log(
+                  `Wake lock is ${
+                  wakeLockObj.active ? 'active' : 'not active'}`);
+          }catch (error) {
+            console.error('Unable to request wakelock2: ',error);
+        }
+        }).catch((err) => {
+    return console.error('Could not obtain wake lock2', err);
+  });
+    }else{
+          console.log('Unable to request getWakeLock in nav: ');
+    }
+      }
+      
+      // Call the async function when the document is ready
+      document.addEventListener('DOMContentLoaded', engageWakeLock);
+    </script>
+    <script src="script.js"></script>
+    <script>
+       function redirectToPlaylistPage() {
+    // Use window.location.href to navigate to the playlist page
+    window.location.href = '/textToPlaylist.html';
+}
+     function simulateUserActivity() {
+    const clickEvent = new MouseEvent('click', {
+        bubbles: true,
+        cancelable: true,
+        view: window,
+    });
+    document.body.dispatchEvent(clickEvent);
+}
+
+// Simulate user activity every 5 minutes
+setInterval(simulateUserActivity, 150000); // 5 minutes
+
+
+
+    </script>
+
+   <script>
+     
+     const video = document.getElementById('1b');
+         const iframe = document.getElementById('mobile_content_frame');
+         const iframeDocument = iframe.contentDocument;
+
+         // Set the inner HTML of the iframe
+         iframeDocument.body.innerHTML =
+           `<style>
+
+         video::-webkit-media-controls-timeline,
+         video::-webkit-media-controls-volume-slider,
+         video::-webkit-media-controls-mute-button,
+         video::-webkit-media-controls-toggle-closed-captions-button,
+         video::-webkit-media-controls-overflow-button,
+         video::-webkit-media-controls-current-time-display,
+         video::-webkit-media-controls-time-remaining-display {
+           filter: grayscale(100%);
+           opacity: 0.05;
+           pointer-events: none;
+         }
+
+
+         /* Show fullscreen button */
+         video::-webkit-media-controls-fullscreen-button {
+           filter: grayscale(0%);
+           opacity: 1;
+           pointer-events: auto;
+         }
+         video::-webkit-media-controls-play-button {
+           filter: grayscale(100%);
+           opacity: 0.05;
+           pointer-events: none;
+           display: none;
+         }
+           </style>
+           <video id="mobile_content" width="100%" height="100%" src="lbt.webm" style="border-radius:50px;" autoplay muted controls loop></video>`;
+         const mobileContent = iframeDocument.getElementById('mobile_content');
+
+         const mobileContentHolder = document.getElementById('mobile_content_holder');
+         const fullscreenButton = document.getElementById('fullscreenButton');
+
+     fullscreenButton.addEventListener("click", function () {
+       console.log('Stored fullscreen state:', storedFullscreenState);
+       if (document.fullscreenElement) {
+         document.exitFullscreen();
+         localStorage.setItem('fullscreenState', false);
+       } else {
+         makeFullscreen(mobileContent);
+       }
+     });
+         document.getElementById('fullscreenButtonNormal').addEventListener("click", function () {
+           console.log('Stored fullscreen state:', storedFullscreenState);
+           if (document.fullscreenElement) {
+             document.exitFullscreen();
+             localStorage.setItem('fullscreenState', false);
+           } else {
+             makeFullscreen(video);
+           }
+           console.log('Stored fullscreen state:', storedFullscreenState);
+         });
+
+     function makeFullscreen(element) {
+       if (element.requestFullscreen) {    
+         element.requestFullscreen();
+         localStorage.setItem('fullscreenState', true);
+       } else if (element.webkitRequestFullscreen) {
+         element.webkitRequestFullscreen();
+         localStorage.setItem('fullscreenState', true);
+       } else if (element.mozRequestFullScreen) {
+         element.mozRequestFullScreen();
+         localStorage.setItem('fullscreenState', true);
+       } else if (element.msRequestFullscreen) {
+         element.msRequestFullscreen();
+         localStorage.setItem('fullscreenState', true);
+       } else {
+         var requestFullscreen =
+           document.documentElement.requestFullscreen ||
+           document.documentElement.webkitRequestFullscreen ||
+           document.documentElement.mozRequestFullscreen ||
+           document.documentElement.requestFullScreen ||
+           document.documentElement.webkitRequestFullScreen ||
+           document.documentElement.mozRequestFullScreen;
+
+         if (requestFullscreen) {
+           requestFullscreen.call(document.documentElement);
+           localStorage.setItem('fullscreenState', true);
+         } else {
+           localStorage.setItem('fullscreenState', false);
+           console.log("Fullscreen not supported");
+         }
+       }
+     }
+
+  const emergencyButton = document.getElementById('emergencyButton');
+
+  // Function to update the button text based on the video state
+  function updateButtonText() {
+    if (mobileContent.paused) {
+      emergencyButton.textContent = 'Start Hidden Video (PIP)';
+    } else {
+      emergencyButton.textContent = 'Stop Hidden Video (PIP)';
+    }
+  }
+
+  // Add event listener to the emergency button
+  emergencyButton.addEventListener('click', function () {
+    if (mobileContent.paused) {
+      // If the video is paused, play it
+      mobileContent.play();
+    } else {
+      // If the video is playing, pause it
+      mobileContent.pause();
+    }
+
+    // Update the button text after the click event
+    updateButtonText();
+  });
+
+  // Update the button text when the video state changes
+  mobileContent.addEventListener('play', updateButtonText);
+  mobileContent.addEventListener('pause', updateButtonText);
+
+
+     
+
+         const reloadButton = document.getElementById('lazyReloadButton');
+     reloadButton.addEventListener('click', () => {
+
+        
+          localStorage.setItem('fullscreenState', !!document.fullscreenElement);
+console.log('Stored fullscreen state:', !!document.fullscreenElement);
+       
+       // Reload the page after a delay (e.g., 1 second)
+       setTimeout(() => {
+         location.reload();
+       }, 1000);
+     });
+
+     // Check the stored fullscreen state after the page reloads
+     const storedFullscreenState = localStorage.getItem('fullscreenState') === 'true';
+     console.log('Stored fullscreen state:', storedFullscreenState);
+
+     if (storedFullscreenState) {
+       console.log("the stored state check to activate fullscreen" , storedFullscreenState);
+        setTimeout(() => {
+          makeFullscreen(video);
+        }, 1562);
+       
+     }
+
+     
+   </script>
+    
+</body>
+</html>

@@ -1,0 +1,77 @@
+/* Add styles for the toggle switch container */
+.toggner {
+  display: flex;
+  margin-inline-start: auto;
+  justify-content: center; /* Horizontally center-aligns the child elements */
+  position: relative;
+  width: 60px;
+  height: 25px;
+  display: block;
+  margin-top: 0.5vh; /* Adjust the margin as needed */
+}
+
+/* Add styles for the toggle label */
+.toggle-label {
+    margin-left: -170px; /* Adjust the margin as needed */
+    line-height: 25px; /* Vertically center the label */
+    font-size: 14px; /* Adjust the font size as needed */
+    color: white; /* Text color */
+}
+
+/* Add styles for the toggle switch container */
+.toggle-container {
+    display: flex;
+    margin-inline-start: auto;
+    align-items: center; /* Vertically center the child elements */
+    position: relative;
+    width: 60px; /* Adjust the width as needed */
+    height: 25px;
+    margin-top: 0.5vh; /* Adjust the margin as needed */
+}
+
+/* Rest of your toggle switch styles remain unchanged */
+
+/* Add styles for the toggle switch label */
+.extract-toggle-label {
+  position: absolute;
+  top: 0;
+  left: -4.8vh;
+  width: 100%;
+  height: 100%;
+  background-color: #e0e0e0;
+  border-radius: 30px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+/* Add styles for the toggle switch slider */
+.extract-toggle-slider {
+  position: absolute;
+  top: 5px;
+  left: -3.7vh;
+  width: 15px;
+  height: 15px;
+  background-color: #5c5757;
+  border-radius: 50%;
+  transition: transform 0.3s ease;
+}
+
+/* Add styles for the toggle switch in the "on" position */
+.extract-toggle-checkbox:checked + .extract-toggle-label {
+  background-color: #4cd964; /* Change to your desired "on" color */
+}
+
+/* Move the slider to the right when the toggle is in the "on" position */
+.extract-toggle-checkbox:checked + .extract-toggle-label + .extract-toggle-slider {
+  transform: translateX(30px);
+}
+
+input[type="checkbox" i] {
+    background-color: initial;
+    cursor: default;
+    appearance: auto;
+    box-sizing: border-box;
+    margin: 0px 0px 0px -9999px;
+    padding: initial;
+    border: initial;
+}

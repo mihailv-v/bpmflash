@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="frame-src https://open.spotify.com;">
+    <title>Create Playlist</title>
+    <link rel="stylesheet" type="text/css" href="textToPlaylist.css">
+    <link rel="stylesheet" type="text/css" href="styles.css">
+    <script src="https://kit.fontawesome.com/bea82be087.js" crossorigin="anonymous"></script>
+    <script src="https://open.spotify.com/embed/iframe-api/v1" async></script>
+</head>
+<body>
+    <!-- Navigation button to go back to the main page -->
+    <button id="back-button" style="
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 10px 10px;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            max-width: min-content;
+            min-width: min-content;
+            border-bottom: inset limegreen;
+            border-bottom-width: thick;
+            border-top: double green;
+            z-index: 999;
+            ""  onclick="redirectToMainPage()">Main Page</button>
+
+
+
+
+    <!-- Option to create playlist name automatically -->
+    <div class="overlay-container" style="
+      opacity:1;
+    display: inline-flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-content: space-between;
+    justify-content: center;
+    align-items: baseline;
+">
+
+    <!-- Form to input playlist name -->
+    <div class="overlay-container">
+      <h2>Text to playlist</h2>
+        <label for="playlist-name">Playlist Name:</label>
+        <input type="text" id="playlist-name" placeholder="Enter Playlist Name" minlength="0" maxlength="500" required>
+    </div>
+      
+      <div>
+      <div style="
+    display: inline-flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-content: space-between;
+    justify-content: center;
+    align-items: baseline;
+">
+        <a style="display:inline-flex;width:80%">Create Name Automatically</a><input type="checkbox" id="auto-generate-name" style="display:inline-flex;width:15%"> 
+      </div>
+      <div style="
+    display: inline-flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-content: space-between;
+    justify-content: center;
+    align-items: baseline;
+">
+        <a style="display:inline-flex;width:80%">Add songs to an existing playlist</a><input type="checkbox" id="existing-playlist-checkbox" style="display:inline-flex;width:15%"> 
+    </div>
+    </div>
+
+    <!-- Form to input song details -->
+    <div class="overlay-container" style:"justify-content:center">
+        <label for="song-input" style:"display:inline-flex;"><div><a>Add songs:</a></div></label>
+        <textarea id="song-input" placeholder="Enter songs&#10;one per line or separated by ';'&#10;like so&#10;artist - song&#10;artist - song&#10;&#10;or&#10;&#10;artist - song;artist - song;" minlength="2" maxlength="9999999" required=""></textarea>
+
+      <div style:"display:inline-flex;">
+        <button id="add-song-button"><div>Start Adding</div></button>
+      </div>
+    </div>
+
+    <div id="playlist-name-error" class="error-message"></div>
+    <div id="song-input-error" class="error-message"></div>
+    <div style:"display:block;width:100%;">
+          <!-- Loading placeholder -->
+    <div id="loading-placeholder" style="display: none;justify-content:center;">
+       <i class="fa-solid fa-spinner fa-spin-pulse"></i>
+    </div>
+    <!-- Display added songs and songs that couldn't be added -->
+    <div style:"display:inline-flex;width:50%;">
+          <h2>Added Songs:</h2>
+          <ul id="added-songs-list">
+              <!-- Display added songs here -->
+          </ul>
+      </div>
+  
+      <div style:"display:inline-flex;width:50%;">
+          <h2>Songs Not Found / Not Added:</h2>
+          <ul id="not-added-songs-list">
+              <!-- Display songs that couldn't be added here -->
+          </ul>
+      </div>
+    </div>
+
+<div id="playlist-links" style="display: inherit; flex-direction: column; align-items: center;">
+    <div id="playlist-link-buttons" style="display: flex;justify-content: space-evenly;padding: 10px;">
+        <!-- Button to display playlist link -->
+        <button id="playlist-link-button" style="display: none;">View Playlist</button>
+        <button id="playlist-station-link-button" style="display: none;">View Playlist Station</button>
+    </div>
+</div>
+ 
+<div>
+
+  
+  <!-- Add this section after the existing HTML content -->
+<div style="border-style: solid none solid none;">
+    <h2>List Tracks From Your Playlist</h2>
+
+<!-- Form to input the playlist name to list tracks -->
+<div class="overlay-container">
+    <label for="playlist-name-to-list">Playlist Name:</label>
+    <input type="text" id="playlist-name-to-list" placeholder="Enter Playlist Name">
+    <button id="list-tracks-button">List Tracks</button>
+</div>
+
+<!-- Display listed tracks -->
+<div id="listed-tracks-section">
+    <h3>Listed Tracks:</h3>
+    <ul id="playlist-tracks-list">
+        <!-- Display listed tracks here -->
+    </ul>
+</div>
+</div>
+
+
+  <!-- Add this section for generating BPM-based playlists -->
+  <div style="border-style: solid none solid none; margin-top: 20px;">
+      <h2>Generate BPM-based Playlists from an existing one</h2>
+
+      <div class="overlay-container">
+          <label for="bpm-playlist-name">Playlist Name:</label>
+          <input type="text" id="bpm-playlist-name" placeholder="Enter Playlist Name">
+          <select id="search-option-bpm">
+              <option value="name">Search by Playlist Name</option>
+              <option value="global">Global Search</option>
+              <option value="id">Use Playlist ID</option>
+              <option value="link">Use Playlist Link</option>
+          </select>
+          <button id="generate-bpm-playlist">Generate BPM Playlist</button>
+      </div>
+      <!-- Confirm Playlist -->
+      <div id="confirm-playlist-container-bpm"></div>
+      <ul id="search-results-for-bpm-sort"></ul>
+    
+      <!-- Display BPM playlist generation logs -->
+      <div id="bpm-generation-log">
+          <h3>Generation Log:</h3>
+          <ul>
+            <li id="playlist-chunks-bpm-gen"></li>
+          </ul>
+          <ul id="bpm-generation-log-list">
+              <!-- Display generation log here -->
+          </ul>
+      </div>
+  </div>
+
+<!-- Add this section after the existing HTML content -->
+<div style="border-style: solid none solid none;">
+    <h2>Manage Your Playlists</h2>
+  <div class="overlay-container">
+    <!-- Add a button to open playlist management -->
+    <button id="manage-playlists-button">Manage Playlists</button>
+
+    <!-- Playlist management section -->
+    <div id="playlist-management-section" style="display: none;">
+        <h3>Your Playlists:</h3>
+        <div id="playlist-container" class="playlist-grid">
+            <!-- Playlists will be displayed here -->
+        </div>
+        <!-- Done with playlist management button -->
+        <button id="done-managing-playlists">Done with Playlist Management</button>
+    </div>
+  </div>
+</div>
+
+  
+  <!-- Section for Displaying Statistics -->
+<div style="border-style: solid none solid none;">
+    <h2>Playlist Statistics</h2>
+
+    <!-- Add div or elements here to display playlist statistics -->
+    <div id="playlist-statistics-section">
+        <!-- Statistics will be displayed here -->
+    </div>
+  
+</div>
+  
+<div>
+    <h2>Remove Duplicate Tracks from Your Playlist</h2>
+  <div>
+    <label for="playlist-name-to-remove-duplicates">Playlist Name:</label>
+    <input type="text" id="playlist-name-to-remove-duplicates" placeholder="Enter Playlist Name">
+    <button id="remove-duplicates-button">Start Removing Duplicates</button>
+    <h3>Tracks to Remove:</h3>
+    <ul id="tracks-to-remove-list">
+        <!-- Display tracks to be removed here -->
+    </ul>
+    <h3>Removed Duplicates:</h3>
+    <ul id="removed-duplicate-tracks-list">
+        <!-- Display removed duplicate tracks here -->
+    </ul>
+    <h3>Added Back Tracks:</h3>
+    <ul id="added-back-tracks-list">
+        <!-- Display added back tracks here -->
+    </ul>
+  </div>
+</div>
+
+
+  <!-- Section for the Advanced Version -->
+  <div id="advanced-version">
+      <h2>Remove Duplicate Tracks (Advanced)</h2>
+      <p>This version employs a more advanced duplicate evaluation method.</p>
+
+      <!-- Form to input the playlist name for advanced removal -->
+      <div class="overlay-container">
+          <label for="playlist-name-to-advanced-remove">Playlist Name:</label>
+          <input type="text" id="playlist-name-to-advanced-remove" placeholder="Enter Playlist Name">
+          <button id="advanced-remove-duplicates-button">Start Advanced Removal</button>
+      </div>
+    
+
+    <!-- Display removed duplicate tracks -->
+    <div id="removed-advanced-duplicate-tracks-section" >
+        <h3>To Be Removed Duplicate Tracks:</h3>
+        <ul id="to-be-removed-advanced-duplicate-tracks-list">
+            <!-- Display removed duplicate tracks here -->
+        </ul>
+    </div>
+    
+      <!-- Display removed duplicate tracks -->
+      <div id="removed-advanced-duplicate-tracks-section" >
+          <h3>Removed Duplicate Tracks:</h3>
+          <ul id="removed-advanced-duplicate-tracks-list">
+              <!-- Display removed duplicate tracks here -->
+          </ul>
+      </div>
+
+      <!-- Display added back tracks -->
+      <div id="added-back-advanced-tracks-section" >
+          <h3>Added Back Tracks:</h3>
+          <ul id="added-back-advanced-tracks-list">
+              <!-- Display added back tracks here -->
+          </ul>
+      </div>
+  </div>
+
+<div style="border-style: solid none solid none;">
+  <h2 style=' text-align: center;'>Make a recommendations playlist from existing playlist</h2>
+
+  <div class="overlay-container">
+    <label for="recs-playlist-name">Playlist Name:</label>
+    <input type="text" id="recs-playlist-name" placeholder="Enter Playlist Name">
+    <select id="search-option-recs">
+        <option value="name">Search by Playlist Name</option>
+        <option value="global">Global Search</option>
+        <option value="id">Use Playlist ID</option>
+        <option value="link">Use Playlist Link</option>
+    </select>
+    <!-- <button id="generate-recs-playlist">Get Recs Playlist</button> -->
+    <!-- Confirm Playlist -->
+    <div id="confirm-playlist-container-recs"></div>
+    <ul id="search-results-for-recs-gen"></ul>
+</div>
+
+  <br>
+
+  <label for="loopCount">Enter Number of Loops:</label>
+  <input type="number" id="loopCount">
+  <br>
+
+  <label for="songsPerRecommendation">Enter Number (3-100) of Recommended songs per song:</label>
+  <input type="number" id="songsPerRecommendation" min=3 max=100>
+  <br>
+
+  <label for="tempoOption">Additional generation requirements:</label>
+  <select id="tempoOption">
+      <option value="default">Default</option>
+      <option value="customBPM">+Custom BPM</option>
+      <option value="customKey">+Custom Key</option>
+      <option value="customCombined">+Custom Combined</option>
+  </select>
+
+  <div id="tempoOptions" style="display: none;">
+      <label for="minTempo">Min Tempo:</label>
+      <input type="number" id="minTempo" min="0">
+      <br>
+
+      <label for="maxTempo">Max Tempo:</label>
+      <input type="number" id="maxTempo" min="0">
+      <br>
+
+      <label for="targetTempo">Target Tempo:</label>
+      <input type="number" id="targetTempo" min="0">
+      <br>
+  </div>
+
+  <div id="keyOptions" style="display: none;">
+      <label for="minKey">Min Key:</label>
+      <input type="number" id="minKey" min="0" max="11">
+      <br>
+
+      <label for="maxKey">Max Key:</label>
+      <input type="number" id="maxKey" min="0" max="11">
+      <br>
+
+      <label for="targetKey">Target Key:</label>
+      <input type="number" id="targetKey" min="0" max="11">
+      <br>
+  </div>
+<br>
+
+      <label for="genreOption">Select Genres:</label>
+    <div id="genreOptions">
+        <!-- Available genre seeds will be dynamically added here -->
+    </div>
+    <br>
+
+    <button id="getGenresButton">Get Available Genres</button>
+
+<br>
+  <button id="generateButton">Generate Playlist</button>
+<br>
+  <div style="display:inline-table;" id="recommendationsDiv">
+    <h3 style="display: flex;justify-content:center;flex-direction: column;flex-wrap: wrap;align-items: center;">Fetched Recommendations until now:</h3>
+    <br>
+    <div id="fromSeed">
+      <h4>From Seed:</h4>
+      <br>
+    </div>
+    <div id="gotRecs">
+      <h4>Got Recommendations:</h4>
+      <br>
+    </div>
+    <br>
+  </div>
+  <br>
+  <div id="results">
+      <!-- Results will be displayed here -->
+  </div>
+
+</div>
+  
+<div style="border-style: solid none solid none;">
+    <h2>Change Playlists' Privacy</h2>
+
+    <!-- Button to fetch the user's playlists -->
+    <button id="fetch-playlists-button">Get My Playlists</button>
+
+    <!-- Container to display playlists and privacy options -->
+    <div id="playlist-container">
+        <!-- Playlists will be populated dynamically here -->
+    </div>
+
+    <!-- Button to submit changes -->
+    <button id="submit-privacy-button" style="display: none">Submit</button>
+</div>
+
+  <div id="playlist-tracks-section" style="border-style: solid none solid none;">
+        <h2>Like/Dislike all Playlist tracks</h2>
+        <select id="search-options">
+            <option value="name">Search in My Library</option>
+            <option value="global">Global Search</option>
+            <option value="id">By Playlist ID</option>
+            <option value="link">By Spotify Link</option>
+        </select>
+        <input type="text" id="search-input" placeholder="Enter Playlist Name, ID, or Link">
+        <button id="search-playlist-button">Search</button>
+
+        <h2 hidden>Search Results</h2>
+        <ul id="search-results-like-dislike"></ul>
+
+        <h2>Selected Playlist</h2>
+        <p id="selected-playlist">No playlist selected.</p>
+        <p id="selected-playlist-message"></p>
+    
+        <h2>Actions</h2>
+        <button id="fetch-tracks-button" disabled>Fetch Tracks</button>
+        <button id="like-tracks-button" disabled>Like/Save Tracks</button>
+        <button id="remove-tracks-button" disabled>Remove Tracks</button>
+  </div>
+
+  
+  <!-- Section for Pushing Play with Context URI -->
+<div style="border-style: solid none solid none;">
+    <h2>Push Play with Context URI</h2>
+
+    <!-- Form to input the context URI and device ID -->
+    <div class="overlay-container">
+        <label for="context-uri">Context URI:</label>
+        <input type="text" id="context-uri" placeholder="Enter Context URI">
+        <label for="device-id">Device ID (optional):</label>
+        <input type="text" id="device-id" placeholder="Enter Device ID">
+        <button id="push-play-button">Push Play</button>
+    </div>
+</div>
+
+<div style="border-style: solid none solid none;">
+  <h2>Playlist to Station</h2>
+<!-- Section for Finding and Transforming Playlist URL -->
+<div style="border-style: solid none solid none;">
+    <h2>Find and Transform Your Playlist</h2>
+
+    <!-- Form to input the playlist name -->
+    <div class="overlay-container">
+        <label for="playlist-name-to-transform">Playlist Name:</label>
+        <input type="text" id="playlist-name-to-transform" placeholder="Enter Playlist Name">
+        <button id="transform-url-button">Transform Playlist</button>
+    </div>
+
+    <!-- Display transformed link and button -->
+    <div id="transformed-link-section" style="display: none;">
+        <p>Transformed Playlist Link:</p>
+        <div id="transformed-playlist-link"></div>
+        <button id="go-to-transformed-link-button">Go to Transformed Link</button>
+    </div>
+</div>
+
+<!-- Section for Directly Transforming a Playlist Link -->
+<div style="border-style: solid none solid none;">
+    <h2>Directly Transform Playlist Link</h2>
+
+    <!-- Form to input the playlist link -->
+    <div class="overlay-container">
+        <label for="direct-playlist-link">Playlist Link:</label>
+        <input type="text" id="direct-playlist-link" placeholder="Enter Playlist Link">
+        <button id="transform-direct-link-button">Transform Link</button>
+    </div>
+
+    <!-- Display transformed link and button -->
+    <div id="transformed-direct-link-section" style="display: none;">
+        <p>Transformed Playlist Link:</p>
+        <div id="transformed-direct-playlist-link"></div>
+        <button id="go-to-transformed-direct-link-button">Go to Transformed Link</button>
+    </div>
+</div>
+<!-- Section for Searching and Transforming Any Playlist URL -->
+<div style="border-style: solid none solid none;">
+    <h2>Search and Transform Any Playlist</h2>
+
+    <!-- Form to input the playlist name to search -->
+    <div class="overlay-container">
+        <label for="search-playlist-name">Playlist Name:</label>
+        <input type="text" id="search-playlist-name" placeholder="Enter Playlist Name">
+        <button id="search-transform-url-button">Search and Transform URL</button>
+    </div>
+
+    <!-- Display search results -->
+    <div id="search-results-section" style="display: none;">
+        <h3>Search Results:</h3>
+        <ul id="search-results-list">
+            <!-- Display search results here -->
+        </ul>
+    </div>
+</div>
+</div>
+<!-- Section for Searching and Transforming Any Playlist URL -->
+<div style="border-style: solid none solid none;">
+    <h2>Spotify Unshortener</h2>
+    <div>
+        <input type="text" id="shortened-link" placeholder="Enter Spotify short link">
+        <button id="unshorten-button">Unshorten</button>
+    </div>
+    <ul id="unshortened-link-list"></ul>
+</div>
+<div style="border-style: solid none solid none;">
+    <h2>Spotify Embedder</h2>
+    <div>
+        <input type="text" id="spotify-link" placeholder="Enter Spotify playlist link">
+        <button id="embed-button">Embed</button>
+    </div>
+    <div id="embedded-spotify" style="display: inherit;    width: max-content;
+"></div>
+</div>
+
+  
+</div>
+    <!-- JavaScript to handle user interactions -->
+    <script src="../textToPlaylist.js"></script>
+
+    <script>
+        // JavaScript function to redirect back to the main page
+        function redirectToMainPage() {
+            window.location.href = "index.html"; // Replace with the actual URL of your main page
+        }
+    </script>
+</body>
+</html>
